@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>還有幾天？— 萬用倒數計時器</title>
+<style>
+  :root {
+    --primary: #5B8DEF;
+    --primary-dark: #3F6FD8;
+    --primary-light: #E8F0FE;
+    --bg: #F0F6FF;
+    --card: #FFFFFF;
+    --text: #1F2A44;
+    --text-muted: #7A869A;
+    --border: #DCE6F5;
+    --shadow: 0 4px 16px rgba(91, 141, 239, 0.12);
+    --radius: 16px;
+    --cat-exam: #FF7A59;
+    --cat-holiday: #9B6BFF;
+    --cat-personal: #34C77B;
+    --cat-other: #9AA5B1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Noto Sans TC", "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 64px;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-size: 2rem;
+    color: var(--primary-dark);
+    letter-spacing: 1px;
+  }
+  header p { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px; }
+
+  /* 輸入區 */
+  .input-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .input-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .input-row input[type="text"] {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+  input[type="text"], input[type="date"] {
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type="text"]:focus, input[type="date"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.18);
+  }
+  input[type="date"] { flex: 0 1 150px; }
+  
+  /* 自訂分類輸入框 */
+  #categoryInput { flex: 0 1 120px; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    flex: 0 0 auto;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+
+  .error-msg {
+    color: #E5484D;
+    font-size: 0.88rem;
+    margin-top: 10px;
+    min-height: 1.2em;
+  }
+
+  /* 釘選區 */
+  .pinned-section { margin-bottom: 24px; }
+  .section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    padding-left: 4px;
+  }
+
+  .pinned-card {
+    background: linear-gradient(135deg, #5B8DEF 0%, #7BA7F5 100%);
+    color: #fff;
+    border-radius: var(--radius);
+    padding: 26px 24px;
+    box-shadow: 0 8px 24px rgba(91, 141, 239, 0.32);
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .pinned-card .pinned-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    opacity: 0.95;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pinned-card .pinned-big {
+    font-size: 2.6rem;
+    font-weight: 800;
+    margin: 6px 0 10px;
+    letter-spacing: 1px;
+  }
+  .pinned-card .pinned-big small { font-size: 1rem; font-weight: 500; opacity: 0.9; margin-left: 4px; }
+  .pinned-card .pinned-date { font-size: 0.88rem; opacity: 0.85; }
+  .pinned-card .progress-track { background: rgba(255, 255, 255, 0.3); }
+  .pinned-card .progress-fill { background: #fff; }
+  .pinned-card .card-actions { margin-top: 14px; }
+  .pinned-card .icon-btn {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+  }
+  .pinned-card .icon-btn:hover { background: rgba(255, 255, 255, 0.38); }
+
+  /* 事件列表 */
+  .event-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .event-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+    border-left: 6px solid var(--cat-other);
+    transition: transform 0.18s, box-shadow 0.18s, opacity 0.3s;
+    animation: fadeIn 0.25s ease;
+  }
+  .event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(91, 141, 239, 0.18);
+  }
+  .event-card.removing {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 動態分類顏色 */
+  .event-card.cat-考試, .event-card.cat-段考 { border-left-color: var(--cat-exam); }
+  .event-card.cat-節日, .event-card.cat-連假 { border-left-color: var(--cat-holiday); }
+  .event-card.cat-個人 { border-left-color: var(--cat-personal); }
+
+  .event-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .event-info { min-width: 0; }
+  .event-name {
+    font-size: 1.08rem;
+    font-weight: 700;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 999px;
+    color: #fff;
+    white-space: nowrap;
+    background: var(--cat-other); /* 預設灰色 */
+  }
+  .badge.考試, .badge.段考 { background: var(--cat-exam); }
+  .badge.節日, .badge.連假 { background: var(--cat-holiday); }
+  .badge.個人 { background: var(--cat-personal); }
+
+  .event-date { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+
+  .event-countdown {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary-dark);
+    white-space: nowrap;
+    text-align: right;
+  }
+  .event-countdown small { font-size: 0.85rem; font-weight: 600; margin-left: 2px; }
+  .event-countdown.past { color: #9AA5B1; }
+  .event-countdown.today { color: var(--cat-exam); }
+
+  /* 進度條 */
+  .progress-wrap { margin-top: 12px; }
+  .progress-track {
+    height: 8px;
+    background: var(--primary-light);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 999px;
+    transition: width 0.5s ease;
+  }
+  .progress-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  /* 卡片操作 */
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+  .icon-btn {
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .icon-btn:hover { background: #D5E3FC; }
+  .icon-btn:active { transform: scale(0.95); }
+  .icon-btn.delete { background: #FDE8E8; color: #E5484D; }
+  .icon-btn.delete:hover { background: #FBD5D5; }
+
+  /* 空狀態 */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .empty-state .emoji { font-size: 2.6rem; display: block; margin-bottom: 10px; }
+  .empty-state p { font-size: 0.95rem; }
+
+  /* RWD */
+  @media (max-width: 520px) {
+    header h1 { font-size: 1.6rem; }
+    .input-row input[type="text"] { flex: 1 1 100%; }
+    input[type="date"] { flex: 1 1 calc(50% - 5px); }
+    #categoryInput { flex: 1 1 calc(50% - 5px); }
+    .btn-primary { flex: 1 1 100%; }
+    .event-countdown { font-size: 1.25rem; }
+    .pinned-card .pinned-big { font-size: 2.1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🕐 還有幾天？</h1>
+    <p>記錄每一個值得期待的日子</p>
+  </header>
+
+  <!-- 輸入區 -->
+  <section class="input-card">
+    <div class="input-row">
+      <input type="text" id="nameInput" placeholder="事件名稱（例：期末考）" maxlength="30" />
+      <input type="date" id="dateInput" />
+      <!-- 改成文字輸入框，可以自己打分類 -->
+      <input type="text" id="categoryInput" placeholder="分類（例：專案）" maxlength="10" list="categoryList" />
+      <!-- 提供常用的選項建議，但也可以自己打字 -->
+      <datalist id="categoryList">
+        <option value="考試"></option>
+        <option value="節日"></option>
+        <option value="個人"></option>
+        <option value="其他"></option>
+      </datalist>
+      
+      <button class="btn btn-primary" id="addBtn">新增</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </section>
+
+  <!-- 釘選區 -->
+  <section class="pinned-section" id="pinnedSection" style="display:none;">
+    <div class="section-title">★ 釘選中</div>
+    <div id="pinnedList"></div>
+  </section>
+
+  <!-- 事件列表 -->
+  <section>
+    <div class="section-title" id="listTitle" style="display:none;">全部事件</div>
+    <div class="event-list" id="eventList"></div>
+    <div class="empty-state" id="emptyState">
+      <span class="emoji">📅</span>
+      <p>還沒有任何倒數事件<br />在上面輸入名稱與日期，開始倒數吧！</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "countdownEvents";
+
+  // DOM
+  const nameInput = document.getElementById("nameInput");
+  const dateInput = document.getElementById("dateInput");
+  const categoryInput = document.getElementById("categoryInput");
+  const addBtn = document.getElementById("addBtn");
+  const errorMsg = document.getElementById("errorMsg");
+  const pinnedSection = document.getElementById("pinnedSection");
+  const pinnedList = document.getElementById("pinnedList");
+  const eventList = document.getElementById("eventList");
+  const emptyState = document.getElementById("emptyState");
+  const listTitle = document.getElementById("listTitle");
+
+  /** 讀取資料 */
+  function loadEvents() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /** 儲存資料 */
+  function saveEvents(events) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
+  }
+
+  /** 將日期歸零，避免時分秒誤差 */
+  function startOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  /** 計算天數差：目標 - 今天 */
+  function daysUntil(dateStr) {
+    const parts = dateStr.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    const target = new Date(parts[0], parts[1] - 1, parts[2]);
+    const today = startOfDay(new Date());
+    const diffMs = target.getTime() - today.getTime();
+    return Math.round(diffMs / 86400000);
+  }
+
+  /** 計算進度比例（從建立日到目標日） */
+  function progressPercent(ev) {
+    const parts = ev.date.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return 0;
+    const target = new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+    let start;
+    if (ev.createdAt) {
+      const c = ev.createdAt.split("-").map(Number);
+      start = new Date(c[0], c[1] - 1, c[2]).getTime();
+    } else {
+      start = startOfDay(new Date()).getTime();
+    }
+    const now = startOfDay(new Date()).getTime();
+    if (target <= start) {
+      return now >= target ? 100 : 0;
+    }
+    const ratio = ((now - start) / (target - start)) * 100;
+    return Math.max(0, Math.min(100, Math.round(ratio)));
+  }
+
+  /** 產生倒數文字 */
+  function countdownInfo(days) {
+    if (days > 0) return { text: "還有 " + days + " 天", cls: "" };
+    if (days === 0) return { text: "就是今天！", cls: "today" };
+    return { text: "已過 " + Math.abs(days) + " 天", cls: "past" };
+  }
+
+  /** 修正大字顯示：只把數字加上「天」字，避免重複 */
+  function formatTextWithSmallDay(text) {
+    // 找到數字，並在數字後面加上 <small>天</small>，同時把原本的「天」拿掉
+    return text.replace(/(\d+)\s*天/, "$1<small>天</small>");
+  }
+
+  /** 建立事件卡片 DOM */
+  function createCard(ev, isPinnedCard) {
+    const days = daysUntil(ev.date);
+    const info = countdownInfo(days);
+    const percent = progressPercent(ev);
+    const catSafe = escapeHtml(ev.category);
+
+    const card = document.createElement("div");
+
+    if (isPinnedCard) {
+      card.className = "pinned-card";
+      card.innerHTML =
+        '<div class="pinned-name">★ ' + escapeHtml(ev.name) +
+          '<span class="badge ' + catSafe + '">' + catSafe + "</span></div>" +
+        '<div class="pinned-big">' + formatTextWithSmallDay(info.text) + "</div>" +
+        '<div class="pinned-date">' + escapeHtml(ev.date) + "</div>" +
+        '<div class="progress-wrap">' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + percent + '%"></div></div>' +
+          '<div class="progress-label" style="color:rgba(255,255,255,0.85)">進度 ' + percent + "%</div>" +
+        "</div>" +
+        '<div class="card-actions">' +
+          '<button class="icon-btn" data-action="unpin" data-id="' + ev.id + '">取消釘選</button>' +
+          '<button class="icon-btn" data-action="delete" data-id="' + ev.id + '">刪除</button>' +
+        "</div>";
+    } else {
+      card.className = "event-card cat-" + catSafe;
+      card.dataset.id = ev.id;
+      card.innerHTML =
+        '<div class="event-top">' +
+          '<div class="event-info">' +
+            '<div class="event-name">' + escapeHtml(ev.name) +
+              '<span class="badge ' + catSafe + '">' + catSafe + "</span></div>" +
+            '<div class="event-date">' + escapeHtml(ev.date) + "</div>" +
+          "</div>" +
+          '<div class="event-countdown ' + info.cls + '">' + formatTextWithSmallDay(info.text) + "</div>" +
+        "</div>" +
+        '<div class="progress-wrap">' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + percent + '%"></div></div>' +
+          '<div class="progress-label">進度 ' + percent + "%</div>" +
+        "</div>" +
+        '<div class="card-actions">' +
+          '<button class="icon-btn" data-action="pin" data-id="' + ev.id + '">釘選</button>' +
+          '<button class="icon-btn delete" data-action="delete" data-id="' + ev.id + '">刪除</button>' +
+        "</div>";
+    }
+    return card;
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  /** 排序：日期近的在前；已過日期排後面（依日期由近到遠） */
+  function sortEvents(events) {
+    return events.slice().sort(function (a, b) {
+      const da = daysUntil(a.date);
+      const db = daysUntil(b.date);
+      const aPast = da < 0;
+      const bPast = db < 0;
+      if (aPast !== bPast) return aPast ? 1 : -1; // 未過的在前
+      if (!aPast) return da - db; // 未過：近的在前
+      return db - da; // 已過：剛過的在前
+    });
+  }
+
+  /** 渲染全部 */
+  function render() {
+    const events = loadEvents();
+    const pinned = events.filter(function (e) { return e.pinned; });
+    const normal = events.filter(function (e) { return !e.pinned; });
+
+    // 釘選區
+    pinnedList.innerHTML = "";
+    if (pinned.length > 0) {
+      pinnedSection.style.display = "";
+      sortEvents(pinned).forEach(function (ev) {
+        pinnedList.appendChild(createCard(ev, true));
+      });
+    } else {
+      pinnedSection.style.display = "none";
+    }
+
+    // 列表
+    eventList.innerHTML = "";
+    const sortedNormal = sortEvents(normal);
+    sortedNormal.forEach(function (ev) {
+      eventList.appendChild(createCard(ev, false));
+    });
+
+    // 空狀態
+    if (events.length === 0) {
+      emptyState.style.display = "";
+      listTitle.style.display = "none";
+    } else {
+      emptyState.style.display = "none";
+      listTitle.style.display = normal.length > 0 ? "" : "none";
+    }
+  }
+
+  /** 新增事件 */
+  function addEvent() {
+    const name = nameInput.value.trim();
+    const date = dateInput.value;
+    // 如果分類沒填，預設為「其他」
+    let category = categoryInput.value.trim();
+    if (!category) category = "其他";
+
+    if (!name) {
+      errorMsg.textContent = "請輸入事件名稱";
+      nameInput.focus();
+      return;
+    }
+    if (!date) {
+      errorMsg.textContent = "請選擇日期";
+      dateInput.focus();
+      return;
+    }
+    errorMsg.textContent = "";
+
+    const events = loadEvents();
+    const now = new Date();
+    const createdAt =
+      now.getFullYear() + "-" +
+      String(now.getMonth() + 1).padStart(2, "0") + "-" +
+      String(now.getDate()).padStart(2, "0");
+
+    events.push({
+      id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+      name: name,
+      date: date,
+      category: category,
+      pinned: false,
+      createdAt: createdAt
+    });
+    saveEvents(events);
+
+    nameInput.value = "";
+    dateInput.value = "";
+    categoryInput.value = ""; // 清空分類
+    nameInput.focus();
+    render();
+  }
+
+  /** 刪除事件 */
+  function deleteEvent(id) {
+    const events = loadEvents().filter(function (e) { return e.id !== id; });
+    saveEvents(events);
+    render();
+  }
+
+  /** 釘選 / 取消釘選 */
+  function togglePin(id, pinned) {
+    const events = loadEvents().map(function (e) {
+      if (e.id === id) e.pinned = pinned;
+      return e;
+    });
+    saveEvents(events);
+    render();
+  }
+
+  // 事件綁定
+  addBtn.addEventListener("click", addEvent);
+  nameInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") addEvent();
+  });
+  dateInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") addEvent();
+  });
+  categoryInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") addEvent();
+  });
+
+  // 事件委派：釘選 / 取消釘選 / 刪除
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if (action === "delete") {
+      const card = btn.closest(".event-card, .pinned-card");
+      if (card) {
+        card.classList.add("removing");
+        setTimeout(function () { deleteEvent(id); }, 220);
+      } else {
+        deleteEvent(id);
+      }
+    } else if (action === "pin") {
+      togglePin(id, true);
+    } else if (action === "unpin") {
+      togglePin(id, false);
+    }
+  });
+
+  // 初始化：每次載入與每分鐘更新一次（跨日時天數會正確）
+  render();
+  setInterval(render, 60000);
+})();
+</script>
+</body>
+</html>
